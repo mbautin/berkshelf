@@ -27,7 +27,7 @@ Feature: Running the contingent command
         * ekaf (1.0.0)
         * fake (1.0.0)
       """
-    And the exit status should be 0
+
 
   Scenario: When there are no dependent cookbooks
     Given the cookbook store has the cookbooks:
@@ -41,7 +41,7 @@ Feature: Running the contingent command
       """
       There are no cookbooks contingent upon 'dep' defined in this Berksfile
       """
-    And the exit status should be 0
+
 
   Scenario: When the cookbook is not in the Berksfile
     Given I have a Berksfile pointing at the local Berkshelf API

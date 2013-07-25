@@ -18,7 +18,7 @@ Feature: Applying cookbook versions to a Chef Environment
       | cookbook   | version_lock |
       | fake       | 1.0.0 |
       | dependency | 2.0.0 |
-    And the exit status should be 0
+
 
   Scenario: Locking cookbook versions to a non-existent Chef Environment
     Given The Chef Server does not have an environment named "berkshelf_lock_test"

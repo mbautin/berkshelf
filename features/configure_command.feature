@@ -28,7 +28,7 @@ Feature: Configuring Berkshelf via the command line
       | chef.validation_key_path    | /Users/reset/.chef/reset.pem                      |
       | vagrant.vm.box              | Berkshelf-minimal                                 |
       | vagrant.vm.box_url          | https://dl.dropbox.com/Berkshelf.box              |
-    And the exit status should be 0
+
 
   Scenario: Accepting the default values
     Given I do not have a Chef config
@@ -51,7 +51,7 @@ Feature: Configuring Berkshelf via the command line
       | chef.validation_key_path    | /etc/chef/validation.pem            |
       | vagrant.vm.box              | Berkshelf-CentOS-6.3-x86_64-minimal |
       | vagrant.vm.box_url          | https://dl.dropbox.com/u/31081437/Berkshelf-CentOS-6.3-x86_64-minimal.box |
-    And the exit status should be 0
+
 
   Scenario: Creating a Berkshelf configuration file when one already exists
     Given I already have a Berkshelf config file
@@ -83,7 +83,6 @@ Feature: Configuring Berkshelf via the command line
       | chef.validation_key_path    | /Users/reset/.chef/reset.pem                      |
       | vagrant.vm.box              | Berkshelf-minimal                                 |
       | vagrant.vm.box_url          | https://dl.dropbox.com/Berkshelf.box              |
-    And the exit status should be 0
 
     Examples:
       | path                   |

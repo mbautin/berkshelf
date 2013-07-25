@@ -14,7 +14,7 @@ Feature: initialize command
       metadata
       """
     And the output should contain "Successfully initialized"
-    And the exit status should be 0
+
 
   Scenario: initializing a path that does not contain a cookbook
     Given a directory named "not_a_cookbook"
@@ -28,11 +28,10 @@ Feature: initialize command
       metadata
       """
     And the output should contain "Successfully initialized"
-    And the exit status should be 0
+
 
   Scenario: initializing with no value given for target
     When I successfully run `berks init`
     Then the output should contain "Successfully initialized"
     And a file named "Berksfile" should exist
     And a file named "chefignore" should not exist
-    And the exit status should be 0
