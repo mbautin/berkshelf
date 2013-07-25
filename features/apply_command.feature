@@ -9,10 +9,8 @@ Feature: Applying cookbook versions to a Chef Environment
     And the cookbook store has the cookbooks:
       | dependency | 2.0.0 |
     And The Chef Server has an environment named "berkshelf_lock_test"
-    And I write to "Berksfile" with:
+    And I have a Berksfile pointing at the local Berkshelf API with:
       """
-      source "http://localhost:26210"
-
       cookbook 'fake', '1.0.0'
       """
     When I successfully run `berks apply berkshelf_lock_test`
@@ -26,10 +24,8 @@ Feature: Applying cookbook versions to a Chef Environment
     Given The Chef Server does not have an environment named "berkshelf_lock_test"
     And the cookbook store has the cookbooks:
       | fake | 1.0.0 |
-    And I write to "Berksfile" with:
+    And I have a Berksfile pointing at the local Berkshelf API with:
       """
-      source "http://localhost:26210"
-
       cookbook 'fake', '1.0.0'
       """
     When I run `berks apply berkshelf_lock_test`
