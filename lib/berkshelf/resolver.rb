@@ -75,6 +75,22 @@ module Berkshelf
     #
     # @return [Array<CookbookSource>]
     def add_source_dependencies(source)
+      # Add sources from the cookbook's Berksfile.
+      berksfile_path = ::File.join(source.cached_cookbook.path, 'Berksfile')
+      if File.exists?(berksfile_path)
+        begin
+          # Many Berksfiles contain :integration groups that refer to non-existent test cookbooks.
+          berksfile = Berksfile::from_file(berksfile_path, :ignored_groups => [[:integration]])
+        rescue Exception => e
+          $stderr.puts "Error parsing Berksfile for #{source}: #{e}"
+        end
+        if berksfile
+          berksfile.sources.each do |dependency_source|
+            add_source(dependency_source) unless has_source?(dependency_source)
+          end
+        end
+      end
+
       source.cached_cookbook.dependencies.each do |name, constraint|
         next if has_source?(name)
 
