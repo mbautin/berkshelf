@@ -24,6 +24,25 @@ module Berkshelf
 
     alias_method :tag, :branch
 
+    # Resolve variable substitutions, such as ${name} and ${version}.
+    def substitute_variables(value)
+      if value
+        # Substitute name
+        value = value.gsub('${name}', @name)
+
+        # Substitute version obtained from the metadata file.
+        if @version_from_metadata
+          version = @version_from_metadata.strip.gsub(/^(=|~>)/, '').strip
+          if version !~ /[<=>~]/
+            # We have what looks like a well-specified version
+            value = value.gsub('${version}', version)
+          end
+        end
+      end
+
+      value
+    end
+
     # @param [#to_s] name
     # @param [Solve::Constraint] version_constraint
     # @param [Hash] options
@@ -45,6 +64,11 @@ module Berkshelf
       @branch             = options[:branch] || options[:tag] || 'master'
       @ref                = options[:ref]
       @rel                = options[:rel]
+      @version_from_metadata = options[:version_from_metadata]
+
+      @branch = substitute_variables(@branch)
+      @ref = substitute_variables(@ref)
+      @rel = substitute_variables(@rel)
 
       Git.validate_uri!(@uri)
     end
