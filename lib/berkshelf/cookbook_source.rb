@@ -1,7 +1,7 @@
 module Berkshelf
   class CookbookSource
     class << self
-      @@valid_options = [:constraint, :locations, :group, :locked_version]
+      @@valid_options = [:constraint, :locations, :group, :locked_version, :version_from_metadata]
       @@location_keys = Hash.new
 
       # Returns an array of valid options to pass to the initializer

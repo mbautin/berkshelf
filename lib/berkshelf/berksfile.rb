@@ -5,11 +5,11 @@ module Berkshelf
       #   a path on disk to a Berksfile to instantiate from
       #
       # @return [Berksfile]
-      def from_file(file)
+      def from_file(file, options = {})
         raise BerksfileNotFound.new(file) unless File.exist?(file)
 
         begin
-          new(file).dsl_eval_file(file)
+          new(file, options).dsl_eval_file(file)
         rescue => ex
           raise BerksfileReadError.new(ex)
         end
@@ -67,7 +67,7 @@ module Berkshelf
     expose_method :chef_api
     expose_method :cookbook
 
-    @@active_group = nil
+    @active_group = nil
 
     # @return [String]
     #   The path on disk to the file representing this instance of Berksfile
@@ -84,11 +84,13 @@ module Berkshelf
 
     # @param [String] path
     #   path on disk to the file containing the contents of this Berksfile
-    def initialize(path)
+    def initialize(path, options = {})
       @filepath         = path
       @sources          = Hash.new
       @downloader       = Downloader.new(Berkshelf.cookbook_store)
       @cached_cookbooks = nil
+      @parsed_metadata  = nil
+      @ignored_groups   = options[:ignored_groups] || []
     end
 
     # Add a cookbook dependency to the Berksfile to be retrieved and have it's dependencies recursively retrieved
@@ -166,17 +168,17 @@ module Berkshelf
       options[:path] &&= File.expand_path(options[:path], File.dirname(filepath))
       options[:group] = Array(options[:group])
 
-      if @@active_group
-        options[:group] += @@active_group
+      if @active_group
+        options[:group] += @active_group
       end
 
       add_source(name, constraint, options)
     end
 
     def group(*args)
-      @@active_group = args
-      yield
-      @@active_group = nil
+      @active_group = args
+      yield unless @ignored_groups.include?(@active_group)
+      @active_group = nil
     end
 
     # Use a Cookbook metadata file to determine additional cookbook sources to retrieve. All
@@ -192,6 +194,7 @@ module Berkshelf
 
       metadata_path = File.expand_path(File.join(path, 'metadata.rb'))
       metadata = Ridley::Chef::Cookbook::Metadata.from_file(metadata_path)
+      @parsed_metadata = metadata
 
       name = metadata.name.presence || File.basename(File.expand_path(path))
 
@@ -251,6 +254,10 @@ module Berkshelf
     #
     # @return [Array<Berkshelf::CookbookSource]
     def add_source(name, constraint = nil, options = {})
+      if @parsed_metadata && @parsed_metadata.dependencies.include?(name) &&
+        options[:version_from_metadata] = @parsed_metadata.dependencies[name]
+      end
+
       if has_source?(name)
         # Only raise an exception if the source is a true duplicate
         groups = (options[:group].nil? || options[:group].empty?) ? [:default] : options[:group]
