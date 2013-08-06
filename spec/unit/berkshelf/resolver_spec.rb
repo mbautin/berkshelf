@@ -2,7 +2,7 @@ require 'spec_helper'
 
 describe Berkshelf::Resolver, :chef_server, vcr: {record: :new_episodes, serialize_with: :yaml} do
   let(:downloader) { Berkshelf::Downloader.new(Berkshelf.cookbook_store) }
-  let(:berksfile) { double(downloader: downloader) }
+  let(:berksfile) { double(downloader: downloader, should_use_dep_berksfiles: false) }
   let(:source) do
     double('source',
       name: 'mysql',
