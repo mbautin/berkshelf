@@ -66,6 +66,7 @@ module Berkshelf
     expose_method :site
     expose_method :chef_api
     expose_method :cookbook
+    expose_method :use_dependency_berksfiles
 
     @active_group = nil
 
@@ -79,6 +80,8 @@ module Berkshelf
     # @return [Array<Berkshelf::CachedCookbook>]
     attr_reader :cached_cookbooks
 
+    attr_reader :should_use_dep_berksfiles
+
     def_delegator :downloader, :add_location
     def_delegator :downloader, :locations
 
@@ -91,6 +94,7 @@ module Berkshelf
       @cached_cookbooks = nil
       @parsed_metadata  = nil
       @ignored_groups   = options[:ignored_groups] || []
+      @should_use_dep_berksfiles = options[:use_dependency_berksfiles]
     end
 
     # Add a cookbook dependency to the Berksfile to be retrieved and have it's dependencies recursively retrieved
@@ -687,6 +691,11 @@ module Berkshelf
     #   not exist
     def lockfile
       @lockfile ||= Berkshelf::Lockfile.new(self)
+    end
+
+    # Enable recursive evaluation of Berksfiles
+    def use_dependency_berksfiles
+      @should_use_dep_berksfiles = true
     end
 
     private
