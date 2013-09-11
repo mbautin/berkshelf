@@ -1,3 +1,5 @@
+require 'ostruct'
+
 module Berkshelf
   class GitLocation
     class << self
@@ -30,14 +32,14 @@ module Berkshelf
         # Substitute name
         value = value.gsub('${name}', @name)
 
-        # Substitute version obtained from the metadata file.
-        if @version_from_metadata
-          version = @version_from_metadata.strip.gsub(/^(=|~>)/, '').strip
-          if version !~ /[<=>~]/
-            # We have what looks like a well-specified version
-            value = value.gsub('${version}', version)
-          end
-        end
+        # # Substitute version obtained from the metadata file.
+        # if @version_from_metadata
+        #   version = @version_from_metadata.strip.gsub(/^(=|~>)/, '').strip
+        #   if version !~ /[<=>~]/
+        #     # We have what looks like a well-specified version
+        #     value = value.gsub('${version}', version)
+        #   end
+        # end
       end
 
       value
@@ -82,7 +84,38 @@ module Berkshelf
         return local_revision(destination)
       end
 
-      Berkshelf::Git.checkout(clone, ref || branch) if ref || branch
+      clone_dir = clone
+
+      effective_branch = ref || branch
+      if effective_branch && effective_branch.include?('${version}')
+        tags = Berkshelf::Git.tags(clone_dir)
+        version_constraint = Solve::Constraint.new(@version_from_metadata)
+        branch_regex = Regexp.new(effective_branch.sub('${version}', '([0-9]+\.[0-9]+\.[0-9]+)'))
+        matching_tags = tags.map do |tag|
+          if tag =~ branch_regex
+            version = Solve::Version.new($1)
+            # puts "version=#{version}, constraint=#{version_constraint}"
+            # puts "version.class=#{version.class}, constraint.class=#{version_constraint.class}"
+            # begin
+            #   version_constraint.satisfies?(version)
+            # rescue => exception
+            #   puts exception
+            #   puts exception.backtrace
+            # end
+            if version_constraint.satisfies?(version)
+              OpenStruct.new(:tag => tag, :version => version)
+            end
+          end
+        end.delete_if {|result| result.nil? }
+
+        puts "DEBUG: matching_tags=#{matching_tags}"
+        unless matching_tags.empty?
+          effective_branch = matching_tags.max_by {|t| t.version }.tag
+          puts "DEBUG: Using branch #{effective_branch}"
+        end
+      end
+
+      Berkshelf::Git.checkout(clone_dir, effective_branch) if effective_branch
       @ref = Berkshelf::Git.rev_parse(clone)
 
       tmp_path = rel ? File.join(clone, rel) : clone

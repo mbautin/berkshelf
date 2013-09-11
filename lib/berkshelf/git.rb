@@ -22,6 +22,7 @@ module Berkshelf
       def git(*command)
         command.unshift(git_cmd)
         command_str = command.map { |p| quote_cmd_arg(p) }.join(' ')
+        puts "DEBUG: command_str=#{command_str}"
         response    = shell_out(command_str)
 
         unless response.success?
@@ -44,6 +45,12 @@ module Berkshelf
         git('clone', uri, destination.to_s)
 
         destination
+      end
+
+      def tags(repo_path)
+        Dir.chdir(repo_path) do
+          git('tag')
+        end.split("\n")
       end
 
       # Checkout the given reference in the given repository
