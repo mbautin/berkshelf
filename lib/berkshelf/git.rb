@@ -22,7 +22,6 @@ module Berkshelf
       def git(*command)
         command.unshift(git_cmd)
         command_str = command.map { |p| quote_cmd_arg(p) }.join(' ')
-        puts "DEBUG: command_str=#{command_str}"
         response    = shell_out(command_str)
 
         unless response.success?
