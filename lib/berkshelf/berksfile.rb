@@ -95,6 +95,7 @@ module Berkshelf
       @parsed_metadata  = nil
       @ignored_groups   = options[:ignored_groups] || []
       @should_use_dep_berksfiles = options[:use_dependency_berksfiles]
+      @ignore_metadata_source = options[:ignore_metadata_source]
     end
 
     # Add a cookbook dependency to the Berksfile to be retrieved and have it's dependencies recursively retrieved
@@ -202,7 +203,9 @@ module Berkshelf
 
       name = metadata.name.presence || File.basename(File.expand_path(path))
 
-      add_source(name, nil, { path: path, metadata: true })
+      unless @ignore_metadata_source
+        add_source(name, nil, { path: path, metadata: true })
+      end
     end
 
     # Add a 'Site' default location which will be used to resolve cookbook sources that do not
@@ -258,8 +261,16 @@ module Berkshelf
     #
     # @return [Array<Berkshelf::CookbookSource]
     def add_source(name, constraint = nil, options = {})
-      if @parsed_metadata && @parsed_metadata.dependencies.include?(name) &&
-        options[:version_from_metadata] = @parsed_metadata.dependencies[name]
+      if @parsed_metadata && @parsed_metadata.dependencies.include?(name)
+        constraint_from_metadata = @parsed_metadata.dependencies[name]
+        if constraint.nil?
+          constraint = constraint_from_metadata
+        elsif constraint != constraint_from_metadata
+          Berkshelf.logger.warn(
+            "Using constraint for #{name} specified in Berksfile (#{constraint}), " +
+            "but #{constraint_from_metadata} specified in metadata.rb"
+          )
+        end
       end
 
       if has_source?(name)
