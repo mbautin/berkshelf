@@ -82,6 +82,7 @@ module Berkshelf
       if effective_branch && effective_branch.include?('${version}')
         tags = Berkshelf::Git.tags(clone_dir)
         version_constraint = Solve::Constraint.new(@version_from_metadata)
+
         branch_regex = Regexp.new(effective_branch.sub('${version}', '([0-9]+\.[0-9]+\.[0-9]+)'))
         matching_tags = tags.map do |tag|
           if tag =~ branch_regex
@@ -110,14 +111,20 @@ module Berkshelf
           # Modify @ref or @branch to remove substitution variables from the output.
           if ref
             @ref = effective_branch
+            @branch = nil
           else
             @branch = effective_branch
+            @ref = nil
           end
         end
       end
 
       Berkshelf::Git.checkout(clone_dir, effective_branch) if effective_branch
       @ref = Berkshelf::Git.rev_parse(clone)
+      if branch != effective_branch
+        # Don't show branch name that does not correspond to what we have checked out.
+        @branch = nil
+      end
 
       tmp_path = rel ? File.join(clone, rel) : clone
       unless File.chef_cookbook?(tmp_path)
