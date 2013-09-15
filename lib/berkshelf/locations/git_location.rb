@@ -58,7 +58,6 @@ module Berkshelf
       @branch             = options[:branch] || options[:tag] || 'master'
       @ref                = options[:ref]
       @rel                = options[:rel]
-      @version_from_metadata = options[:version_from_metadata]
 
       @branch = substitute_variables(@branch)
       @ref = substitute_variables(@ref)
@@ -81,7 +80,6 @@ module Berkshelf
       effective_branch = ref || branch
       if effective_branch && effective_branch.include?('${version}')
         tags = Berkshelf::Git.tags(clone_dir)
-        version_constraint = Solve::Constraint.new(@version_from_metadata)
 
         branch_regex = Regexp.new(effective_branch.sub('${version}', '([0-9]+\.[0-9]+\.[0-9]+)'))
         matching_tags = tags.map do |tag|
