@@ -147,6 +147,10 @@ module Berkshelf
       desc: 'Path to install cookbooks to (i.e. vendor/cookbooks).',
       aliases: '-p',
       banner: 'PATH'
+    method_option :use_dependency_berksfiles,
+      type: :boolean,
+      default: false,
+      desc: 'Use Berksfiles of dependencies to find transitive dependencies.'
     desc 'install', 'Install the cookbooks specified in the Berksfile'
     def install
       berksfile = ::Berkshelf::Berksfile.from_file(options[:berksfile])
@@ -218,6 +222,10 @@ module Berkshelf
       type: :boolean,
       default: false,
       desc: 'Halt uploading and exit if the Chef Server has a frozen version of the cookbook(s).'
+    method_option :use_dependency_berksfiles,
+      type: :boolean,
+      default: false,
+      desc: 'Use Berksfiles of dependencies to find transitive dependencies.'
     desc 'upload [COOKBOOKS]', 'Upload the cookbook specified in the Berksfile to the Chef Server'
     def upload(*cookbook_names)
       berksfile = ::Berkshelf::Berksfile.from_file(options[:berksfile])
