@@ -26,20 +26,12 @@ module Berkshelf
 
     alias_method :tag, :branch
 
-    # Resolve variable substitutions, such as ${name} and ${version}.
+    # Resolve some of the variable substitutions, e.g. ${name}. ${version} cannot be resolved
+    # here because it is not known until available tags are retrieved.
     def substitute_variables(value)
       if value
         # Substitute name
         value = value.gsub('${name}', @name)
-
-        # # Substitute version obtained from the metadata file.
-        # if @version_from_metadata
-        #   version = @version_from_metadata.strip.gsub(/^(=|~>)/, '').strip
-        #   if version !~ /[<=>~]/
-        #     # We have what looks like a well-specified version
-        #     value = value.gsub('${version}', version)
-        #   end
-        # end
       end
 
       value
