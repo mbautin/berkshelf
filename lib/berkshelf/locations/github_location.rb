@@ -46,6 +46,7 @@ module Berkshelf
     def to_s
       s = "#{self.class.location_key}: '#{repo_identifier}'"
       s << " with branch: '#{branch}'" if branch
+      s << " with ref '#{ref}'" if ref
       s << " over protocol: '#{protocol}'"
       s
     end
