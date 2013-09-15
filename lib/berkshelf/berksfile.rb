@@ -5,11 +5,11 @@ module Berkshelf
       #   a path on disk to a Berksfile to instantiate from
       #
       # @return [Berksfile]
-      def from_file(file)
+      def from_file(file, options = {})
         raise BerksfileNotFound.new(file) unless File.exist?(file)
 
         begin
-          new(file).dsl_eval_file(file)
+          new(file, options).dsl_eval_file(file)
         rescue => ex
           raise BerksfileReadError.new(ex)
         end
@@ -66,8 +66,9 @@ module Berkshelf
     expose_method :site
     expose_method :chef_api
     expose_method :cookbook
+    expose_method :use_dependency_berksfiles
 
-    @@active_group = nil
+    @active_group = nil
 
     # @return [String]
     #   The path on disk to the file representing this instance of Berksfile
@@ -79,16 +80,22 @@ module Berkshelf
     # @return [Array<Berkshelf::CachedCookbook>]
     attr_reader :cached_cookbooks
 
+    attr_reader :should_use_dep_berksfiles
+
     def_delegator :downloader, :add_location
     def_delegator :downloader, :locations
 
     # @param [String] path
     #   path on disk to the file containing the contents of this Berksfile
-    def initialize(path)
+    def initialize(path, options = {})
       @filepath         = path
       @sources          = Hash.new
       @downloader       = Downloader.new(Berkshelf.cookbook_store)
       @cached_cookbooks = nil
+      @parsed_metadata  = nil
+      @ignored_groups   = options[:ignored_groups] || []
+      @should_use_dep_berksfiles = options[:use_dependency_berksfiles]
+      @ignore_metadata_source = options[:ignore_metadata_source]
     end
 
     # Add a cookbook dependency to the Berksfile to be retrieved and have it's dependencies recursively retrieved
@@ -166,17 +173,17 @@ module Berkshelf
       options[:path] &&= File.expand_path(options[:path], File.dirname(filepath))
       options[:group] = Array(options[:group])
 
-      if @@active_group
-        options[:group] += @@active_group
+      if @active_group
+        options[:group] += @active_group
       end
 
       add_source(name, constraint, options)
     end
 
     def group(*args)
-      @@active_group = args
-      yield
-      @@active_group = nil
+      @active_group = args
+      yield unless @ignored_groups.include?(@active_group)
+      @active_group = nil
     end
 
     # Use a Cookbook metadata file to determine additional cookbook sources to retrieve. All
@@ -192,10 +199,13 @@ module Berkshelf
 
       metadata_path = File.expand_path(File.join(path, 'metadata.rb'))
       metadata = Ridley::Chef::Cookbook::Metadata.from_file(metadata_path)
+      @parsed_metadata = metadata
 
       name = metadata.name.presence || File.basename(File.expand_path(path))
 
-      add_source(name, nil, { path: path, metadata: true })
+      unless @ignore_metadata_source
+        add_source(name, nil, { path: path, metadata: true })
+      end
     end
 
     # Add a 'Site' default location which will be used to resolve cookbook sources that do not
@@ -251,6 +261,18 @@ module Berkshelf
     #
     # @return [Array<Berkshelf::CookbookSource]
     def add_source(name, constraint = nil, options = {})
+      if @parsed_metadata && @parsed_metadata.dependencies.include?(name)
+        constraint_from_metadata = @parsed_metadata.dependencies[name]
+        if constraint.nil?
+          constraint = constraint_from_metadata
+        elsif constraint != constraint_from_metadata
+          Berkshelf.logger.warn(
+            "Using constraint for #{name} specified in Berksfile (#{constraint}), " +
+            "but #{constraint_from_metadata} specified in metadata.rb"
+          )
+        end
+      end
+
       if has_source?(name)
         # Only raise an exception if the source is a true duplicate
         groups = (options[:group].nil? || options[:group].empty?) ? [:default] : options[:group]
@@ -414,6 +436,7 @@ module Berkshelf
     # @return [Array<Berkshelf::CachedCookbook>]
     def install(options = {})
       local_sources = apply_lockfile(sources(options))
+      @should_use_dep_berksfiles = !!options[:use_dependency_berksfiles]
 
       resolver          = resolve(local_sources)
       @cached_cookbooks = resolver[:solution]
@@ -680,6 +703,11 @@ module Berkshelf
     #   not exist
     def lockfile
       @lockfile ||= Berkshelf::Lockfile.new(self)
+    end
+
+    # Enable recursive evaluation of Berksfiles
+    def use_dependency_berksfiles
+      @should_use_dep_berksfiles = true
     end
 
     private

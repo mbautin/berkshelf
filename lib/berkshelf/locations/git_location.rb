@@ -1,3 +1,5 @@
+require 'ostruct'
+
 module Berkshelf
   class GitLocation
     class << self
@@ -24,6 +26,17 @@ module Berkshelf
 
     alias_method :tag, :branch
 
+    # Resolve some of the variable substitutions, e.g. ${name}. ${version} cannot be resolved
+    # here because it is not known until available tags are retrieved.
+    def substitute_variables(value)
+      if value
+        # Substitute name
+        value = value.gsub('${name}', @name)
+      end
+
+      value
+    end
+
     # @param [#to_s] name
     # @param [Solve::Constraint] version_constraint
     # @param [Hash] options
@@ -46,6 +59,10 @@ module Berkshelf
       @ref                = options[:ref]
       @rel                = options[:rel]
 
+      @branch = substitute_variables(@branch)
+      @ref = substitute_variables(@ref)
+      @rel = substitute_variables(@rel)
+
       Git.validate_uri!(@uri)
     end
 
@@ -55,11 +72,58 @@ module Berkshelf
     def download(destination)
       if cached?(destination)
         @ref ||= Berkshelf::Git.rev_parse(revision_path(destination))
+        @branch = nil if @branch == 'master'  # master may be misleading, and we show the ref anyway
         return local_revision(destination)
       end
 
-      Berkshelf::Git.checkout(clone, ref || branch) if ref || branch
+      clone_dir = clone
+
+      effective_branch = ref || branch
+      if effective_branch && effective_branch.include?('${version}')
+        tags = Berkshelf::Git.tags(clone_dir)
+
+        branch_regex = Regexp.new(effective_branch.sub('${version}', '([0-9]+\.[0-9]+\.[0-9]+)'))
+        matching_tags = tags.map do |tag|
+          if tag =~ branch_regex
+            version = Solve::Version.new($1)
+            if version_constraint.satisfies?(version)
+              OpenStruct.new(:tag => tag, :version => version)
+            end
+          end
+        end.delete_if {|result| result.nil? }
+
+        if matching_tags.empty?
+          Berkshelf.logger.warn(
+            "No tags of the form #{effective_branch} with the version matching constraint " +
+            "#{version_constraint} found for #{@name}"
+          )
+        else
+          latest_version_and_tag = matching_tags.max_by {|t| t.version }
+          @version_constraint = Solve::Constraint.new(latest_version_and_tag.version.to_s)
+          effective_branch = latest_version_and_tag.tag
+          Berkshelf.logger.debug(
+            "Versions of #{@name} matching constraint #{version_constraint}: " +
+            matching_tags.map {|t| t.version }.sort.map(&:to_s).join(', ') +
+            "; using tag: #{effective_branch}"
+          )
+
+          # Modify @ref or @branch to remove substitution variables from the output.
+          if ref
+            @ref = effective_branch
+            @branch = nil
+          else
+            @branch = effective_branch
+            @ref = nil
+          end
+        end
+      end
+
+      Berkshelf::Git.checkout(clone_dir, effective_branch) if effective_branch
       @ref = Berkshelf::Git.rev_parse(clone)
+      if branch != effective_branch
+        # Don't show branch name that does not correspond to what we have checked out.
+        @branch = nil
+      end
 
       tmp_path = rel ? File.join(clone, rel) : clone
       unless File.chef_cookbook?(tmp_path)

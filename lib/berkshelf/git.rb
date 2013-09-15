@@ -46,6 +46,12 @@ module Berkshelf
         destination
       end
 
+      def tags(repo_path)
+        Dir.chdir(repo_path) do
+          git('tag')
+        end.split("\n")
+      end
+
       # Checkout the given reference in the given repository
       #
       # @param [String] repo_path
