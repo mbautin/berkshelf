@@ -78,6 +78,7 @@ module Berkshelf
           return [cached, location]
         rescue => e
           raise if e.kind_of?(CookbookValidationFailure)
+          Berkshelf.logger.debug("#{e}\n#{e.backtrace.map {|s| "  #{s}" }.join("\n")}")
           Berkshelf.formatter.error "Failed to download '#{source.name}' from #{source.location}"
         end
       else
