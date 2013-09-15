@@ -83,7 +83,8 @@ module Berkshelf
             # Many Berksfiles contain :integration groups that refer to non-existent test cookbooks.
             berksfile = Berksfile::from_file(berksfile_path,
               :ignored_groups => [[:integration]],
-              :use_dependency_berksfiles => true)
+              :use_dependency_berksfiles => true,
+              :ignore_metadata_source => true)
           rescue Exception => e
             $stderr.puts "Error parsing Berksfile for #{source}: #{e}"
           end
