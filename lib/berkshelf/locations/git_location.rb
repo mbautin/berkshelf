@@ -72,6 +72,7 @@ module Berkshelf
     def download(destination)
       if cached?(destination)
         @ref ||= Berkshelf::Git.rev_parse(revision_path(destination))
+        @branch = nil if @branch == 'master'  # master may be misleading, and we show the ref anyway
         return local_revision(destination)
       end
 
