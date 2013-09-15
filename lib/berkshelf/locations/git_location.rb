@@ -86,24 +86,33 @@ module Berkshelf
         matching_tags = tags.map do |tag|
           if tag =~ branch_regex
             version = Solve::Version.new($1)
-            # puts "version=#{version}, constraint=#{version_constraint}"
-            # puts "version.class=#{version.class}, constraint.class=#{version_constraint.class}"
-            # begin
-            #   version_constraint.satisfies?(version)
-            # rescue => exception
-            #   puts exception
-            #   puts exception.backtrace
-            # end
             if version_constraint.satisfies?(version)
               OpenStruct.new(:tag => tag, :version => version)
             end
           end
         end.delete_if {|result| result.nil? }
 
-        puts "DEBUG: matching_tags=#{matching_tags}"
-        unless matching_tags.empty?
-          effective_branch = matching_tags.max_by {|t| t.version }.tag
-          puts "DEBUG: Using branch #{effective_branch}"
+        if matching_tags.empty?
+          Berkshelf.logger.warn(
+            "No tags of the form #{effective_branch} with the version matching constraint " +
+            "#{version_constraint} found for #{@name}"
+          )
+        else
+          latest_version_and_tag = matching_tags.max_by {|t| t.version }
+          @version_constraint = Solve::Constraint.new(latest_version_and_tag.version.to_s)
+          effective_branch = latest_version_and_tag.tag
+          Berkshelf.logger.debug(
+            "Versions of #{@name} matching constraint #{version_constraint}: " +
+            matching_tags.map {|t| t.version }.sort.map(&:to_s).join(', ') +
+            "; using tag: #{effective_branch}"
+          )
+
+          # Modify @ref or @branch to remove substitution variables from the output.
+          if ref
+            @ref = effective_branch
+          else
+            @branch = effective_branch
+          end
         end
       end
 
