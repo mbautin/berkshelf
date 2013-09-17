@@ -436,7 +436,7 @@ module Berkshelf
     # @return [Array<Berkshelf::CachedCookbook>]
     def install(options = {})
       local_sources = apply_lockfile(sources(options))
-      @should_use_dep_berksfiles = !!options[:use_dependency_berksfiles]
+      @should_use_dep_berksfiles ||= !!options[:use_dependency_berksfiles]
 
       resolver          = resolve(local_sources)
       @cached_cookbooks = resolver[:solution]
