@@ -22,7 +22,10 @@ module Berkshelf
       def git(*command)
         command.unshift(git_cmd)
         command_str = command.map { |p| quote_cmd_arg(p) }.join(' ')
+        # Make sure we don't break git on Mac OS X when running in Vagrant's environment.
+        old_dyld_library_path = ENV.delete('DYLD_LIBRARY_PATH')
         response    = shell_out(command_str)
+        ENV['dyld_library_path'] = old_dyld_library_path
 
         unless response.success?
           raise GitError.new(response.stderr.strip)
